@@ -7,7 +7,7 @@ import re
 import spacy
 from langdetect import detect
 
-# Cargar modelos de spaCy para diferentes idiomas
+
 nlp_en = spacy.load('en_core_web_sm')
 nlp_de = spacy.load('de_core_news_sm')
 nlp_es = spacy.load('es_core_news_sm')
@@ -135,14 +135,14 @@ def process_document(path):
     with open('output_text.txt', 'w', encoding='utf-8') as f:
         f.write(all_text)
 
-#####Aleman
+#####Alemán
 # file_path = 'img1_de.png'
 # file_path = 'img2_de.png'
 # file_path = 'img3_de.png'
 
-# file_path = 'doc1_de.pdf'  
+file_path = 'doc1_de.pdf'  
 
-######Ingles
+######Inglés
 # file_path = 'img1_en.jpg'  
 # file_path = 'doc1_en.pdf'  
 
@@ -158,6 +158,6 @@ def process_document(path):
 # file_path = 'doc5_es.pdf'
 # file_path = 'doc6_es.pdf'
 # file_path = 'doc7_es.pdf'
-file_path = 'doc8_es.pdf'
+# file_path = 'doc8_es.pdf'
 
 process_document(file_path)
