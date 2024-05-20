@@ -12,14 +12,20 @@ nlp_en = spacy.load('en_core_web_sm')
 nlp_de = spacy.load('de_core_news_sm')
 nlp_es = spacy.load('es_core_news_sm')
 
+
 def preprocess_image(image):
     """Preprocess the image to enhance OCR results."""
-    image = image.convert('L')  # Convert to grayscale
+    if image.mode == 'P' and 'transparency' in image.info:
+        image = image.convert('RGBA')
+    else:
+        image = image.convert('L')  # Convert to grayscale
     enhancer = ImageEnhance.Contrast(image)
     image = enhancer.enhance(2)  # Enhance contrast
     enhancer = ImageEnhance.Sharpness(image)
     image = enhancer.enhance(2)  # Enhance sharpness
     return image
+
+
 
 def extract_invoice_number(text, lang='en'):
     """Extract invoice numbers based on language-specific patterns."""
@@ -54,6 +60,13 @@ def extract_dates(text, lang='en'):
     return matches if matches else None
 
 
+def extract_iban(text):
+    """Extract IBANs based on standard patterns."""
+    pattern = r'\b[A-Z]{2}[0-9]{2}[ ]?([A-Z0-9]{4}[ ]?){1,7}[A-Z0-9]{1,4}\b'
+    matches = re.findall(pattern, text)
+    return matches if matches else None
+
+
 
 def detect_language(text):
     """Detect the language of the given text."""
@@ -64,11 +77,6 @@ def detect_language(text):
 
 
 
-# Comentario: Extracción de información de balance
-# def extract_balance_info(text):
-#     pattern = r'.*Balance.*'
-#     balance_lines = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
-#     return balance_lines
 
 # Comentario: Extracción de información total
 # def extract_total_info(text):
@@ -96,32 +104,44 @@ def process_document(path):
         return
 
     all_text = ""
-    for i, image in enumerate(images):
+
+    for i, image in enumerate(images[:2]):  
         processed_image = preprocess_image(image)
         text = pytesseract.image_to_string(processed_image, lang='eng+spa+deu')
         all_text += text
 
         # Detectar el idioma del texto
         lang = detect_language(text)
-        print(f"Idioma detectado en la página {i+1}: {lang}")
+        # print(f"Idioma detectado en la página {i+1}: {lang}")
+        print(f"Idioma detectado: {lang}")
 
         # Extraer el número de factura
         invoice_number = extract_invoice_number(text, lang)
         if invoice_number:
-            print(f"Número de factura encontrado en la página {i+1}: {invoice_number}")
+            print(f"Número de factura encontrado: {invoice_number}")
         else:
-            print(f"Número de factura no encontrado en la página {i+1}")
+            print(f"Número de factura no encontrado")
 
         # Extraer fechas
         dates = extract_dates(text, lang)
         if dates:
-            print(f"Fechas encontradas en la página {i+1}: {dates}")
+            print(f"Fechas encontradas: {dates}")
         else:
-            print(f"Fechas no encontradas en la página {i+1}")
+            print(f"Fechas no encontradas")
+        
 
-        # Comentario: Extracción de información de 'Balance'
-        # balance_info = extract_balance_info(text)
-        # print("Información de 'Balance' encontrada:", balance_info)
+        # Extraer IBANs
+        ibans = extract_iban(text)
+        if ibans:
+            print(f"IBANs encontrados: {ibans}")
+        else:
+            print(f"IBANs no encontrados")
+
+
+
+        if invoice_number or dates:
+            break
+
 
         # Comentario: Extracción de información de 'Total'
         # total_info = extract_total_info(text)
