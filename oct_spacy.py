@@ -1,4 +1,3 @@
-
 import pytesseract
 from pdf2image import convert_from_path
 from PIL import Image, ImageEnhance
@@ -30,10 +29,8 @@ def preprocess_image(image):
 def extract_invoice_number(text, lang='en'):
     """Extract invoice numbers based on language-specific patterns."""
     if lang == 'en':
-        # pattern = r'Invoice\s*(?:No\.|Number|#|Nr|):?\s*([A-Za-z0-9\-]+)'
         pattern = r'\b(?:Invoice|Proforma Invoice|Receipt|Bill)\s*(?:No\.?|Number|Num|ID|#|/|:|[-])?\s*([A-Za-z0-9\-]+)\b'
     elif lang == 'de':
-        # pattern = r'Rechnungsnummer\s*(?:Nr\.|No|Nummer|#|):?\s*([A-Za-z0-9\-]+)|\b[Rr]-\d{7}\b'
         pattern = r'Rechnungsnummer\s*(?:Nr\.|No|Nummer|ID|Code|Ref|#|[-/])?:?\s*([A-Za-z0-9\-]+)|\b[Rr]-\d{7}\b'
  
     elif lang == 'es':
@@ -67,29 +64,46 @@ def extract_iban(text):
     return matches if matches else None
 
 
+def extract_names(text, lang='en'):
+    """Extract names based on language-specific patterns and spaCy NER."""
+    nlp = nlp_en if lang == 'en' else nlp_de if lang == 'de' else nlp_es
+    doc = nlp(text)
+    ner_names = [ent.text for ent in doc.ents if ent.label_ == 'PERSON']
+    
+    patterns = {
+        'en': r'\b(?:Client Name|Name|Bill to)\s*:\s*([A-Za-z\s]+)\b',
+        'de': r'\b(?:Kunde|Name|Rechnung an)\s*:\s*([A-Za-z\s]+)\b',
+        'es': r'\b(?:Nombre|Nombre de Cliente)\s*:\s*([A-Za-z\s]+)\b'
+    }
+    pattern = patterns.get(lang, patterns['en'])
+    regex_names = re.findall(pattern, text, re.IGNORECASE)
+    
+    return ner_names + regex_names
+
+
+
+def extract_amounts(text, lang='en'):
+    """Extract amounts based on language-specific patterns."""
+    patterns = {
+        'en': r'\b(?:Total Amount|Amount Due|Net Amount|Pay|Payment|Total)\s*[:]?[\s]*([€$£]?[0-9,.]+)\b',
+        'de': r'\b(?:Gesamtbetrag|Betrag|Zu Bezahlen|Zahlen|Zahlung)\s*[:]?[\s]*([€$£]?[0-9,.]+)\b',
+        'es': r'\b(?:Monto Total|Cantidad|Neto|Pagar|Pago|Total)\s*[:]?[\s]*([€$£]?[0-9,.]+)\b'
+    }
+    pattern = patterns.get(lang, patterns['en'])
+    matches = re.findall(pattern, text, re.IGNORECASE)
+    return matches if matches else None
+
+
+
 
 def detect_language(text):
     """Detect the language of the given text."""
     try:
         return detect(text)
     except:
-        return 'en'  # Default to English if detection fails
+        return 'en'  
 
 
-
-
-# Comentario: Extracción de información total
-# def extract_total_info(text):
-#     pattern = r'.*Total.*'
-#     total_lines = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
-#     return total_lines
-
-# Comentario: Extracción de nombres de personas utilizando spaCy
-# def extract_person_names(text, lang='en'):
-#     nlp = nlp_en if lang == 'en' else nlp_de
-#     doc = nlp(text)
-#     names = [ent.text for ent in doc.ents if ent.label_ == 'PERSON']
-#     return names
 
 def process_document(path):
     """Process the document to extract invoice number."""
@@ -112,7 +126,6 @@ def process_document(path):
 
         # Detectar el idioma del texto
         lang = detect_language(text)
-        # print(f"Idioma detectado en la página {i+1}: {lang}")
         print(f"Idioma detectado: {lang}")
 
         # Extraer el número de factura
@@ -136,20 +149,29 @@ def process_document(path):
             print(f"IBANs encontrados: {ibans}")
         else:
             print(f"IBANs no encontrados")
+        
+
+        # Extraer nombres
+        names = extract_names(text, lang)
+        if names:
+            print(f"Nombres encontrados: {names}")
+        else:
+            print(f"Nombres no encontrados")
+
+
+        # Extraer montos
+        amounts = extract_amounts(text, lang)
+        if amounts:
+            print(f"Montos encontrados: {amounts}")
+        else:
+            print(f"Montos no encontrados")
 
 
 
-        if invoice_number or dates:
+        if invoice_number or dates or ibans or names or amounts:
             break
 
 
-        # Comentario: Extracción de información de 'Total'
-        # total_info = extract_total_info(text)
-        # print("Información de 'Total' encontrada:", total_info)
-
-        # Comentario: Extracción de nombres de personas
-        # person_names = extract_person_names(text, lang)
-        # print("Nombres de personas:", person_names)
 
     # Guardar todo el texto extraído en un archivo
     with open('output_text.txt', 'w', encoding='utf-8') as f:
@@ -158,9 +180,9 @@ def process_document(path):
 #####Alemán
 # file_path = 'img1_de.png'
 # file_path = 'img2_de.png'
-# file_path = 'img3_de.png'
+file_path = 'img3_de.png'
 
-file_path = 'doc1_de.pdf'  
+# file_path = 'doc1_de.pdf'  
 
 ######Inglés
 # file_path = 'img1_en.jpg'  
